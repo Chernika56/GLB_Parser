@@ -1,16 +1,16 @@
 ﻿namespace GLB_TXT
 {
-    internal class MetallicRoughness
+    public class MetallicRoughness
     {
-        public float[] baseColorFactor { get; set; } 
-        public float metallicFactor { get; set; }
-        public float roughnessFactor { get; set; }
+        public List<double> baseColorFactor { get; set; } 
+        public double metallicFactor { get; set; }
+        public double roughnessFactor { get; set; }
 
-        public MetallicRoughness(float[] baseColorFactor, float metallicFactor, float roughnessFactor)
-        {
-            this.baseColorFactor = baseColorFactor;
-            this.metallicFactor = metallicFactor;
-            this.roughnessFactor = roughnessFactor;
-        }
+        //public MetallicRoughness(float[] baseColorFactor, float metallicFactor, float roughnessFactor)
+        //{
+        //    this.baseColorFactor = baseColorFactor;
+        //    this.metallicFactor = metallicFactor;
+        //    this.roughnessFactor = roughnessFactor;
+        //}
     }
 }

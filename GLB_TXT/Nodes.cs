@@ -1,6 +1,6 @@
 ﻿namespace GLB_TXT
 {
-    internal class Nodes
+    public class Nodes
     {
         public string? name { get; set; }
         public int? mesh { get; set; }

@@ -1,13 +1,12 @@
-﻿using System;
-using System.IO;
+﻿using GLB_TXT;
 using System.Text;
-using Newtonsoft.Json;
+using System.Text.Json;
 
 class Program
 {
     static void Main()
     {
-        string filePath = "cub.glb";
+        string filePath = "model .glb";
         ParseGLB(filePath);
     }
 
@@ -26,48 +25,25 @@ class Program
                     return;
                 }
 
-                uint version = reader.ReadUInt32();
-                uint length = reader.ReadUInt32();
+                reader.ReadBytes(8);
 
-                Console.WriteLine($"Версия GLB файла: {version}");
-                Console.WriteLine($"Размер GLB файла: {length} байт");
-
-                // Считываем данные JSON
                 uint jsonLength = reader.ReadUInt32();
-                string jsonStr = Encoding.ASCII.GetString(reader.ReadBytes((int)jsonLength + 4));
+                reader.ReadBytes(4);
+                string jsonStr = Encoding.ASCII.GetString(reader.ReadBytes((int)jsonLength));
 
+                RootObject jsonAttribute = JsonSerializer.Deserialize<RootObject>(jsonStr);
 
-
-                //Console.WriteLine($"JSON данные:");
-                //Console.WriteLine(jsonStr);
-
-                // Считываем бинарные данные (если они есть)
                 uint binChunkLength = reader.ReadUInt32();
                 if (binChunkLength > 0)
                 {
                     byte[] binaryData = reader.ReadBytes((int)binChunkLength);
+                    byte[] verticesBuffer = GetVertexBuffer(jsonAttribute, binaryData);
+                    float[] vertices = ParseVertices(jsonAttribute, verticesBuffer);
 
-                    // Поиск буфера вершин в бинарных данных
-                    int vertexBufferIndex = FindVertexBuffer(binaryData);
-
-                    if (vertexBufferIndex != -1)
+                    Console.WriteLine("Координаты вершин:");
+                    for (int i = 0; i < vertices.Length; i += 3)
                     {
-                        // Получаем буфер вершин
-                        byte[] vertexBuffer = GetVertexBuffer(binaryData, vertexBufferIndex);
-
-                        // Извлекаем координаты вершин из буфера
-                        float[] vertices = ParseVertices(vertexBuffer);
-
-                        // Выводим координаты вершин
-                        Console.WriteLine("Координаты вершин:");
-                        for (int i = 0; i < vertices.Length; i += 3)
-                        {
-                            Console.WriteLine($"X: {vertices[i]}, Y: {vertices[i + 1]}, Z: {vertices[i + 2]}");
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("Буфер вершин не найден в бинарных данных.");
+                        Console.WriteLine($"X: {vertices[i]}, Y: {vertices[i + 1]}, Z: {vertices[i + 2]}");
                     }
                 }
                 else
@@ -82,61 +58,39 @@ class Program
         }
     }
 
-    static int FindVertexBuffer(byte[] binaryData)
+    static byte[] GetVertexBuffer(RootObject jsonAttribute, byte[] binaryData)
     {
-        // Идентификатор буфера вершин в формате ASCII
-        byte[] vertexBufferIdentifier = Encoding.ASCII.GetBytes("BIN");
+        int verticesPosition;
+        jsonAttribute.meshes[0].primitives[0].attributes.TryGetValue("POSITION", out verticesPosition);
 
-        for (int i = 0; i < binaryData.Length - vertexBufferIdentifier.Length; i++)
-        {
-            bool match = true;
-
-            // Проверяем совпадение идентификатора
-            for (int j = 0; j < vertexBufferIdentifier.Length; j++)
-            {
-                if (binaryData[i + j] != vertexBufferIdentifier[j])
-                {
-                    match = false;
-                    break;
-                }
-            }
-
-            if (match)
-            {
-                return i;
-            }
-        }
-
-        // Буфер вершин не найден
-        return -1;
-    }
-
-    static byte[] GetVertexBuffer(byte[] binaryData, int startIndex)
-    {
-        // Находим размер буфера вершин
-        int bufferSize = BitConverter.ToInt32(binaryData, startIndex + 4);
+        int bufferPosition = jsonAttribute.accessors[verticesPosition].bufferView;
+        int verticesOffset = jsonAttribute.bufferViews[bufferPosition].byteOffset;
+        int verticesLength = jsonAttribute.bufferViews[bufferPosition].byteLength + 4;
 
         // Копируем буфер вершин
-        byte[] vertexBuffer = new byte[bufferSize];
-        Array.Copy(binaryData, startIndex, vertexBuffer, 0, bufferSize);
+        byte[] verticesBuffer = new byte[verticesLength];
+        Array.Copy(binaryData, verticesOffset, verticesBuffer, 0, verticesLength);
 
-        return vertexBuffer;
+        return verticesBuffer;
     }
 
-    static float[] ParseVertices(byte[] vertexBuffer)
+    static float[] ParseVertices(RootObject jsonAttribute, byte[] verticesBuffer)
     {
-        int vertexCount = BitConverter.ToInt32(vertexBuffer, 0);
+        int verticesPosition;
+        jsonAttribute.meshes[0].primitives[0].attributes.TryGetValue("POSITION", out verticesPosition);
 
-        float[] vertices = new float[vertexCount * 3];
+        int verticesCount = jsonAttribute.accessors[verticesPosition].count;
+
+        float[] vertices = new float[verticesCount * 3];
 
         // Индекс начала координат вершин в буфере
         int offset = 4;
 
         for (int i = 0; i < vertices.Length; i += 3)
         {
-            vertices[i] = BitConverter.ToSingle(vertexBuffer, offset);
-            vertices[i + 1] = BitConverter.ToSingle(vertexBuffer, offset + 4);
-            vertices[i + 2] = BitConverter.ToSingle(vertexBuffer, offset + 8);
+            vertices[i] = BitConverter.ToSingle(verticesBuffer, offset);
+            vertices[i + 1] = BitConverter.ToSingle(verticesBuffer, offset + 4);
+            vertices[i + 2] = BitConverter.ToSingle(verticesBuffer, offset + 8);
 
             offset += 12; // Каждая координата занимает 4 байта (float)
         }

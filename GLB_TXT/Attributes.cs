@@ -1,6 +1,6 @@
 ﻿namespace GLB_TXT
 {
-    internal class Attributes
+    public class Attributes
     {
         public int POSITION { get; set; }
         public int? NORMAL { get; set; }
