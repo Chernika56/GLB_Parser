@@ -7,38 +7,35 @@
         public int material { get; set; }
         public int mode { get; set; }
 
-        //public int? mode {  get; set; }
-        //public int? weights { get; set; }
+        public Primitives(int mode, int position, int normal, int indices, int material)
+        {
+            attributes = new Dictionary<string, int>();
+            attributes.Add("POSITION", position);
+            attributes.Add("NOMAL", normal);
 
-        //public Primitives(Attributes attributes, int indices)
-        //{
-        //    this.attributes = attributes;
-        //    this.indices = indices;
-        //}
+            this.indices = indices;
+            this.mode = mode;
+            this.material = material;
+        }
 
-        //public Primitives(Attributes attributes, int indices, int? material)
-        //{
-        //    this.attributes = attributes;
-        //    this.indices = indices;
-        //    this.material = material;
-        //}
+        public Primitives(int mode, int position, int normal, int indices)
+        {
+            attributes = new Dictionary<string, int>();
+            attributes.Add("POSITION", position);
+            attributes.Add("NOMAL", normal);
 
-        //public Primitives(Attributes attributes, int indices, int? material, int? mode)
-        //{
-        //    this.attributes = attributes;
-        //    this.indices = indices;
-        //    this.material = material;
-        //    this.mode = mode;
-        //}
+            this.indices = indices;
+            this.mode = mode;
+        }
 
-        //public Primitives(Attributes attributes, int indices, int? material, int? mode, int? weights)
-        //{
-        //    this.attributes = attributes;
-        //    this.indices = indices;
-        //    this.material = material;
-        //    this.mode = mode;
-        //    this.weights = weights;
-        //}
+        public Primitives(int mode, int position, int normal)
+        {
+            attributes = new Dictionary<string, int>();
+            attributes.Add("POSITION", position);
+            attributes.Add("NOMAL", normal);
+
+            this.mode = mode;
+        }
 
         public Primitives() { }
     }

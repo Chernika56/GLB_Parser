@@ -8,13 +8,22 @@
         public int target { get; set; }
         public int byteStride { get; set; }
 
-        //public BufferViews(int buffer, int byteOffset, int byteLength, int target)
-        //{
-        //    this.buffer = buffer;
-        //    this.byteOffset = byteOffset;
-        //    this.byteLength = byteLength;
-        //    this.target = target;
-        //}
+        public BufferViews(int buffer, int byteLength, int byteOffset, int target, int byteStride)
+        {
+            this.buffer = buffer;
+            this.byteOffset = byteOffset;
+            this.byteLength = byteLength;
+            this.target = target;
+            this.byteStride = byteStride;
+        }
+
+        public BufferViews(int buffer, int byteLength, int byteOffset, int target)
+        {
+            this.buffer = buffer;
+            this.byteOffset = byteOffset;
+            this.byteLength = byteLength;
+            this.target = target;
+        }
 
         public BufferViews() { }
     }
