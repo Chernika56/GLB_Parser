@@ -6,7 +6,7 @@ class Program
 {
     static void Main()
     {
-        string filePath = "model .glb";
+        string filePath = "model.glb";
         ParseGLB(filePath);
     }
 
@@ -37,13 +37,23 @@ class Program
                 if (binChunkLength > 0)
                 {
                     byte[] binaryData = reader.ReadBytes((int)binChunkLength);
-                    byte[] verticesBuffer = GetVertexBuffer(jsonAttribute, binaryData);
-                    float[] vertices = ParseVertices(jsonAttribute, verticesBuffer);
+
+                    byte[] verticesBuffer = GetParamsBuffer(jsonAttribute, binaryData, "POSITION");
+                    float[] vertices = ParseParams(jsonAttribute, verticesBuffer, "POSITION");
 
                     Console.WriteLine("Координаты вершин:");
                     for (int i = 0; i < vertices.Length; i += 3)
                     {
                         Console.WriteLine($"X: {vertices[i]}, Y: {vertices[i + 1]}, Z: {vertices[i + 2]}");
+                    }
+
+                    byte[] normalBuffer = GetParamsBuffer(jsonAttribute, binaryData, "NORMAL");
+                    float[] normal = ParseParams(jsonAttribute, normalBuffer, "NORMAL");
+
+                    Console.WriteLine("Нормали:");
+                    for (int i = 0; i < normal.Length; i += 3)
+                    {
+                        Console.WriteLine($"X: {normal[i]}, Y: {normal[i + 1]}, Z: {normal[i + 2]}");
                     }
                 }
                 else
@@ -58,44 +68,42 @@ class Program
         }
     }
 
-    static byte[] GetVertexBuffer(RootObject jsonAttribute, byte[] binaryData)
+    static byte[] GetParamsBuffer(RootObject jsonAttribute, byte[] binaryData, string param)
     {
-        int verticesPosition;
-        jsonAttribute.meshes[0].primitives[0].attributes.TryGetValue("POSITION", out verticesPosition);
+        int paramsPosition;
+        jsonAttribute.meshes[0].primitives[0].attributes.TryGetValue(param, out paramsPosition);
 
-        int bufferPosition = jsonAttribute.accessors[verticesPosition].bufferView;
-        int verticesOffset = jsonAttribute.bufferViews[bufferPosition].byteOffset;
-        int verticesLength = jsonAttribute.bufferViews[bufferPosition].byteLength + 4;
+        int bufferPosition = jsonAttribute.accessors[paramsPosition].bufferView;
+        int paramsOffset = jsonAttribute.bufferViews[bufferPosition].byteOffset;
+        int paramsLength = jsonAttribute.bufferViews[bufferPosition].byteLength + 4;
 
-        // Копируем буфер вершин
-        byte[] verticesBuffer = new byte[verticesLength];
-        Array.Copy(binaryData, verticesOffset, verticesBuffer, 0, verticesLength);
+        byte[] paramsBuffer = new byte[paramsLength];
+        Array.Copy(binaryData, paramsOffset, paramsBuffer, 0, paramsLength);
 
-        return verticesBuffer;
+        return paramsBuffer;
     }
 
-    static float[] ParseVertices(RootObject jsonAttribute, byte[] verticesBuffer)
+    static float[] ParseParams(RootObject jsonAttribute, byte[] paramsBuffer, string param)
     {
-        int verticesPosition;
-        jsonAttribute.meshes[0].primitives[0].attributes.TryGetValue("POSITION", out verticesPosition);
+        int paramsPosition;
+        jsonAttribute.meshes[0].primitives[0].attributes.TryGetValue(param, out paramsPosition);
 
-        int verticesCount = jsonAttribute.accessors[verticesPosition].count;
+        int paramsCount = jsonAttribute.accessors[paramsPosition].count;
 
-        float[] vertices = new float[verticesCount * 3];
+        float[] data = new float[paramsCount * 3];
 
-        // Индекс начала координат вершин в буфере
         int offset = 4;
 
-        for (int i = 0; i < vertices.Length; i += 3)
+        for (int i = 0; i < data.Length; i += 3)
         {
-            vertices[i] = BitConverter.ToSingle(verticesBuffer, offset);
-            vertices[i + 1] = BitConverter.ToSingle(verticesBuffer, offset + 4);
-            vertices[i + 2] = BitConverter.ToSingle(verticesBuffer, offset + 8);
+            data[i] = BitConverter.ToSingle(paramsBuffer, offset);
+            data[i + 1] = BitConverter.ToSingle(paramsBuffer, offset + 4);
+            data[i + 2] = BitConverter.ToSingle(paramsBuffer, offset + 8);
 
-            offset += 12; // Каждая координата занимает 4 байта (float)
+            offset += 12;  
         }
 
-        return vertices;
+        return data;
     }
 }
 
