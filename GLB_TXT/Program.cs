@@ -17,7 +17,6 @@ class Program
             using (FileStream fileStream = new FileStream(filePath, FileMode.Open))
             using (BinaryReader reader = new BinaryReader(fileStream))
             {
-                // Считываем заголовок GLB файла
                 string magic = Encoding.ASCII.GetString(reader.ReadBytes(4));
                 if (magic != "glTF")
                 {
@@ -33,7 +32,7 @@ class Program
 
                 RootObject jsonAttribute = JsonSerializer.Deserialize<RootObject>(jsonStr);
 
-                uint binChunkLength = reader.ReadUInt32();
+                uint binChunkLength = reader.ReadUInt32() + 4; 
                 if (binChunkLength > 0)
                 {
                     byte[] binaryData = reader.ReadBytes((int)binChunkLength);
@@ -44,7 +43,7 @@ class Program
                     Console.WriteLine("Координаты вершин:");
                     for (int i = 0; i < vertices.Length; i += 3)
                     {
-                        Console.WriteLine($"X: {vertices[i]}, Y: {vertices[i + 1]}, Z: {vertices[i + 2]}");
+                        Console.WriteLine($"{i / 3}: X: {vertices[i]}, Y: {vertices[i + 1]}, Z: {vertices[i + 2]}");
                     }
 
                     byte[] normalBuffer = GetParamsBuffer(jsonAttribute, binaryData, "NORMAL");
@@ -53,7 +52,41 @@ class Program
                     Console.WriteLine("Нормали:");
                     for (int i = 0; i < normal.Length; i += 3)
                     {
-                        Console.WriteLine($"X: {normal[i]}, Y: {normal[i + 1]}, Z: {normal[i + 2]}");
+                        Console.WriteLine($"{i / 3}: X: {normal[i]}, Y: {normal[i + 1]}, Z: {normal[i + 2]}");
+                    }
+
+                    ushort[] faces = new ushort[vertices.Length / 3];
+
+                    if (jsonAttribute.meshes[0].primitives[0].mode == 4)
+                    {
+                        for (ushort i = 0; i < faces.Length; i++)
+                        {
+                            faces[i] = i;
+                        }
+                    }
+                    else
+                    {
+                        int facesPosition = jsonAttribute.meshes[0].primitives[0].indices;
+                        int bufferPosition = jsonAttribute.accessors[facesPosition].bufferView;
+                        int facesOffset = jsonAttribute.bufferViews[bufferPosition].byteOffset + 4;
+                        int facesLength = jsonAttribute.bufferViews[bufferPosition].byteLength;
+
+                        byte[] facesBuffer = new byte[facesLength];
+                        Array.Copy(binaryData, facesOffset, facesBuffer, 0, facesLength);
+
+                        int facesCount = jsonAttribute.accessors[facesPosition].count;
+                        Array.Resize(ref faces, facesCount);
+
+                        for (int i = 0; i < faces.Length; i++)
+                        {
+                            faces[i] = BitConverter.ToUInt16(facesBuffer, i * sizeof(ushort));
+                        }
+                    }
+
+                    Console.WriteLine("Полигоны:");
+                    for (int i = 0; i < faces.Length; i += 3)
+                    {
+                        Console.WriteLine($"{i / 3}: {faces[i]}, {faces[i + 1]}, {faces[i + 2]}");
                     }
                 }
                 else
