@@ -1,6 +1,5 @@
 ﻿using GLB_TXT;
 using System.Globalization;
-using System.IO;
 using System.Text;
 using System.Text.Json;
 
@@ -37,36 +36,73 @@ class Program
 
     static void CreateGLB(string filePath)
     {
-        string[] lines = System.IO.File.ReadAllLines(filePath);
+        string[] lines = File.ReadAllLines(filePath);
 
         List<float> vertices = new List<float>();
+        List<float> normals = new List<float>();
+        List<short> faces = new List<short>();
 
         if (lines.Length == 0)
         {
             throw new Exception("Файл пуст");
         }
 
-        for (int i = 0; i < lines.Length; i++)
-        {
-            if (lines[i] != null) 
-            {
-                string line = lines[i].Remove(0, 1 + lines[i].IndexOf('('));
-                line = line.Replace(")", "");
+        int tmp = 0;
 
-                string[] values = line.Split(';');
-                float[] data = new float[values.Length];
-                for (int j = 0; j < values.Length; j++)
+        foreach (string line in lines)
+        {
+            if (line == null)
+            {
+                tmp++;
+            }
+            else
+            {
+                string cleanedLine = line.Remove(0, 1 + line.IndexOf('(')).Replace(")", "");
+                string[] values = cleanedLine.Split(';');
+
+                switch (tmp)
                 {
-                    vertices.Add(float.Parse(values[j], CultureInfo.InvariantCulture)); 
+                    case 0:
+                        foreach (string value in values)
+                        {
+                            if (float.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out float floatValue))
+                            {
+                                vertices.Add(floatValue);
+                            }
+                        }
+                        break;
+                    case 1:
+                        foreach (string value in values)
+                        {
+                            if (float.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out float floatValue))
+                            {
+                                normals.Add(floatValue);
+                            }
+                        }
+
+                        break;
+                    case 2:
+                        foreach (string value in values)
+                        {
+                            if (short.TryParse(value, out short shortValue))
+                            {
+                                faces.Add(shortValue);
+                            }
+                        }
+                        break;
                 }
             }
         }
+
+
     }
 
     static void ParseGLB(string filePath)
     {
         using (FileStream fileStream = new FileStream(filePath, FileMode.Open))
         using (BinaryReader reader = new BinaryReader(fileStream))
+        using (StreamWriter writer = new StreamWriter(filePath.Replace("glb", "txt")))
+
         {
             string magic = Encoding.ASCII.GetString(reader.ReadBytes(4));
             if (magic != "glTF")
@@ -88,42 +124,43 @@ class Program
             {
                 byte[] binaryData = reader.ReadBytes((int)binChunkLength);
 
-                byte[] verticesBuffer = GetParamsBuffer(jsonAttribute, binaryData, "POSITION");
-                float[] vertices = ParseParams(jsonAttribute, verticesBuffer, "POSITION");
-
-                byte[] normalBuffer = GetParamsBuffer(jsonAttribute, binaryData, "NORMAL");
-                float[] normal = ParseParams(jsonAttribute, normalBuffer, "NORMAL");
-
-                ushort[] faces = new ushort[vertices.Length / 3];
-
-                if (jsonAttribute.meshes[0].primitives[0].mode == 4)
+                for (int mesh = 0; mesh < jsonAttribute.scenes[0].nodes.Count; mesh++)
                 {
-                    for (ushort i = 0; i < faces.Length; i++)
+                    byte[] verticesBuffer = GetParamsBuffer(jsonAttribute, binaryData, "POSITION", mesh);
+                    float[] vertices = ParseParams(jsonAttribute, verticesBuffer, "POSITION", mesh);
+
+                    byte[] normalBuffer = GetParamsBuffer(jsonAttribute, binaryData, "NORMAL", mesh);
+                    float[] normal = ParseParams(jsonAttribute, normalBuffer, "NORMAL", mesh);
+
+                    ushort[] faces = new ushort[vertices.Length / 3];
+
+                    if (jsonAttribute.meshes[mesh].primitives[0].mode == 4)
                     {
-                        faces[i] = i;
+                        for (ushort i = 0; i < faces.Length; i++)
+                        {
+                            faces[i] = i;
+                        }
                     }
-                }
-                else
-                {
-                    int facesPosition = jsonAttribute.meshes[0].primitives[0].indices;
-                    int bufferPosition = jsonAttribute.accessors[facesPosition].bufferView;
-                    int facesOffset = jsonAttribute.bufferViews[bufferPosition].byteOffset + 4;
-                    int facesLength = jsonAttribute.bufferViews[bufferPosition].byteLength;
-
-                    byte[] facesBuffer = new byte[facesLength];
-                    Array.Copy(binaryData, facesOffset, facesBuffer, 0, facesLength);
-
-                    int facesCount = jsonAttribute.accessors[facesPosition].count;
-                    Array.Resize(ref faces, facesCount);
-
-                    for (int i = 0; i < faces.Length; i++)
+                    else
                     {
-                        faces[i] = BitConverter.ToUInt16(facesBuffer, i * sizeof(ushort));
-                    }
-                }
+                        int facesPosition = jsonAttribute.meshes[mesh].primitives[0].indices;
+                        int bufferPosition = jsonAttribute.accessors[facesPosition].bufferView;
+                        int facesOffset = jsonAttribute.bufferViews[bufferPosition].byteOffset + 4;
+                        int facesLength = jsonAttribute.bufferViews[bufferPosition].byteLength;
 
-                using (StreamWriter writer = new StreamWriter(filePath.Replace("glb", "txt")))
-                {
+                        byte[] facesBuffer = new byte[facesLength];
+                        Array.Copy(binaryData, facesOffset, facesBuffer, 0, facesLength);
+
+                        int facesCount = jsonAttribute.accessors[facesPosition].count;
+                        Array.Resize(ref faces, facesCount);
+
+                        for (int i = 0; i < faces.Length; i++)
+                        {
+                            faces[i] = BitConverter.ToUInt16(facesBuffer, i * sizeof(ushort));
+                        }
+                    }
+
+
                     for (int i = 0; i < vertices.Length; i += 3)
                     {
                         writer.WriteLine($"{i / 3}:({vertices[i]};{vertices[i + 1]};{vertices[i + 2]})");
@@ -140,8 +177,9 @@ class Program
                     {
                         writer.WriteLine($"{i / 3}:({faces[i]};{faces[i + 1]};{faces[i + 2]})");
                     }
-                }
+                    writer.WriteLine();
 
+                }
             }
             else
             {
@@ -150,10 +188,10 @@ class Program
         }
     }
 
-    static byte[] GetParamsBuffer(RootObject jsonAttribute, byte[] binaryData, string param)
+    static byte[] GetParamsBuffer(RootObject jsonAttribute, byte[] binaryData, string param, int mesh)
     {
         int paramsPosition;
-        jsonAttribute.meshes[0].primitives[0].attributes.TryGetValue(param, out paramsPosition);
+        jsonAttribute.meshes[mesh].primitives[0].attributes.TryGetValue(param, out paramsPosition);
 
         int bufferPosition = jsonAttribute.accessors[paramsPosition].bufferView;
         int paramsOffset = jsonAttribute.bufferViews[bufferPosition].byteOffset;
@@ -165,10 +203,10 @@ class Program
         return paramsBuffer;
     }
 
-    static float[] ParseParams(RootObject jsonAttribute, byte[] paramsBuffer, string param)
+    static float[] ParseParams(RootObject jsonAttribute, byte[] paramsBuffer, string param, int mesh)
     {
         int paramsPosition;
-        jsonAttribute.meshes[0].primitives[0].attributes.TryGetValue(param, out paramsPosition);
+        jsonAttribute.meshes[mesh].primitives[0].attributes.TryGetValue(param, out paramsPosition);
 
         int paramsCount = jsonAttribute.accessors[paramsPosition].count;
 
