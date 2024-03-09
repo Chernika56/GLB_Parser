@@ -1,16 +1,17 @@
 ﻿using System.Security.AccessControl;
+using System.Text.Json.Serialization;
 
 namespace GLB_TXT
 {
     public class Accessors
     {
-        public enum AccessorsType
-        {
-            SCALAR,
-            VEC2,
-            VEC3,
-            MAT4
-        }
+        //public enum AccessorsType
+        //{
+        //    SCALAR,
+        //    VEC2,
+        //    VEC3,
+        //    MAT4
+        //}
 
         public int bufferView { get; set; }
         //public int byteOffset { get; set; }
@@ -18,9 +19,11 @@ namespace GLB_TXT
         public int count { get; set; }
         public List<double>? max { get; set; }
         public List<double>? min { get; set; }
-        public AccessorsType type;
 
-        public Accessors(int bufferView, int componentType, int count, AccessorsType type)
+        [JsonPropertyName("type")]
+        public string type { get; set; }
+
+        public Accessors(int bufferView, int componentType, int count, string type)
         {
             this.bufferView = bufferView;
             this.componentType = componentType; 
@@ -28,7 +31,7 @@ namespace GLB_TXT
             this.type = type;
         }
 
-        public Accessors(int bufferView, int componentType, int count, List<double> min, List<double> max, AccessorsType type)
+        public Accessors(int bufferView, int componentType, int count, List<double> min, List<double> max, string type)
         {
             this.bufferView = bufferView;
             this.componentType = componentType;

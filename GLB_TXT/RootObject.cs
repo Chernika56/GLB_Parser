@@ -24,7 +24,7 @@ namespace GLB_TXT
             scenes.Add(new Scenes("Scene", 0));
 
             nodes = new List<Nodes>();
-            nodes.Add(new Nodes(0));
+            nodes.Add(new Nodes("aboba", 0));
 
             materials = new List<Materials>();
             materials.Add(new Materials("Material", true, 0.5, 0.5));
@@ -33,9 +33,9 @@ namespace GLB_TXT
             meshes.Add(new Meshes(position, normal, indices));
 
             accessors = new List<Accessors>();
-            accessors.Add(new Accessors(position, 5126, positonCount, AccessorsType.VEC3));
-            accessors.Add(new Accessors(normal, 5126, normalCount, AccessorsType.VEC3));
-            accessors.Add(new Accessors(indices, 5123, indicesCount, AccessorsType.SCALAR));
+            accessors.Add(new Accessors(position, 5126, positonCount, "VEC3"));
+            accessors.Add(new Accessors(normal, 5126, normalCount, "VEC3"));
+            accessors.Add(new Accessors(indices, 5123, indicesCount, "SCALAR"));
 
             this.bufferViews = bufferViews;
 
@@ -52,7 +52,7 @@ namespace GLB_TXT
             scenes.Add(new Scenes("Scene", 0));
 
             nodes = new List<Nodes>();
-            nodes.Add(new Nodes(0));
+            nodes.Add(new Nodes("aboba", 0));
 
             materials = new List<Materials>();
             materials.Add(new Materials("Material", true, 0.5, 0.5));
@@ -76,7 +76,7 @@ namespace GLB_TXT
             scenes.Add(new Scenes("Scene", 0));
 
             nodes = new List<Nodes>();
-            nodes.Add(new Nodes(0));
+            nodes.Add(new Nodes("aboba", 0));
 
             this.materials = materials;
 

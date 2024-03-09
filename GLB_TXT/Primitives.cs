@@ -11,7 +11,7 @@
         {
             attributes = new Dictionary<string, int>();
             attributes.Add("POSITION", position);
-            attributes.Add("NOMAL", normal);
+            attributes.Add("NORMAL", normal);
 
             this.indices = indices;
             this.mode = mode;
@@ -22,7 +22,7 @@
         {
             attributes = new Dictionary<string, int>();
             attributes.Add("POSITION", position);
-            attributes.Add("NOMAL", normal);
+            attributes.Add("NORMAL", normal);
 
             this.indices = indices;
             this.mode = mode;
@@ -32,7 +32,7 @@
         {
             attributes = new Dictionary<string, int>();
             attributes.Add("POSITION", position);
-            attributes.Add("NOMAL", normal);
+            attributes.Add("NORMAL", normal);
 
             this.mode = mode;
         }

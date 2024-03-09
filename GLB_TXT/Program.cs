@@ -1,7 +1,8 @@
 ﻿using GLB_TXT;
-using System.Globalization;
+using System;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 class Program
 {
@@ -36,11 +37,18 @@ class Program
 
     static void CreateGLB(string filePath)
     {
-        string[] lines = File.ReadAllLines(filePath);
+        string[] linesOld = File.ReadAllLines(filePath);
 
-        List<float> vertices = new List<float>();
-        List<float> normals = new List<float>();
-        List<short> faces = new List<short>();
+        string[] lines = new string[linesOld.Length - 1];
+        Array.Copy(linesOld, 1, lines, 0, lines.Length);
+
+        List<List<float>> vertices = new List<List<float>>();
+        List<List<float>> normals = new List<List<float>>();
+        List<List<short>> faces = new List<List<short>>();
+
+        vertices.Add(new List<float>());
+        normals.Add(new List<float>());
+        faces.Add(new List<short>());
 
         if (lines.Length == 0)
         {
@@ -51,50 +59,109 @@ class Program
 
         foreach (string line in lines)
         {
-            if (line == null)
+            if (string.IsNullOrWhiteSpace(line))
             {
                 tmp++;
+
+                if (tmp % 3 == 0)
+                {
+                    vertices.Add(new List<float>());
+                    normals.Add(new List<float>());
+                    faces.Add(new List<short>());
+                }
             }
             else
             {
                 string cleanedLine = line.Remove(0, 1 + line.IndexOf('(')).Replace(")", "");
                 string[] values = cleanedLine.Split(';');
 
-                switch (tmp)
+                foreach (string value in values)
                 {
-                    case 0:
-                        foreach (string value in values)
-                        {
-                            if (float.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out float floatValue))
+                    switch (tmp % 3)
+                    {
+                        case 0:
+                            if (float.TryParse(value, out float floatValue1))
                             {
-                                vertices.Add(floatValue);
+                                vertices[tmp / 3].Add(floatValue1);
                             }
-                        }
-                        break;
-                    case 1:
-                        foreach (string value in values)
-                        {
-                            if (float.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out float floatValue))
+                            break;
+                        case 1:
+                            if (float.TryParse(value, out float floatValue2))
                             {
-                                normals.Add(floatValue);
+                                normals[tmp / 3].Add(floatValue2);
                             }
-                        }
-
-                        break;
-                    case 2:
-                        foreach (string value in values)
-                        {
+                            break;
+                        case 2:
                             if (short.TryParse(value, out short shortValue))
                             {
-                                faces.Add(shortValue);
+                                faces[tmp / 3].Add(shortValue);
                             }
-                        }
-                        break;
+                            break;
+                    }
                 }
             }
         }
 
+        List<Meshes> meshes = new List<Meshes>();
+        List<Accessors> accessors = new List<Accessors>();
+        List<BufferViews> bufferViews = new List<BufferViews>();
 
+        int binLength = 0;
+
+        for (int i = 0; i < vertices.Count; i++)
+        {
+            bufferViews.Add(new BufferViews(0, vertices[i].Count * sizeof(float), binLength, 34962));
+            binLength += vertices[i].Count * sizeof(float);
+            bufferViews.Add(new BufferViews(0, normals[i].Count * sizeof(float), binLength, 34962));
+            binLength += normals[i].Count * sizeof(float);
+            bufferViews.Add(new BufferViews(0, faces[i].Count * sizeof(short), binLength, 34963));
+            binLength += faces[i].Count * sizeof(short);
+
+            meshes.Add(new Meshes("aboba", 0, i * 3 + 0, i * 3 + 1, i * 3 + 2, 0));
+
+            accessors.Add(new Accessors(i * 3 + 0, 5126, vertices[i].Count / 3, "VEC3"));
+            accessors.Add(new Accessors(i * 3 + 1, 5126, normals[i].Count / 3, "VEC3"));
+            accessors.Add(new Accessors(i * 3 + 2, 5123, faces[i].Count, "SCALAR"));
+        }
+
+        RootObject jsonData = new RootObject(meshes, accessors, bufferViews, binLength);
+
+        byte[] binBuffer = new byte[binLength];
+
+        for (int i = 0; i < meshes.Count; i++)
+        {
+            for (int j = 0; j < vertices[i].Count; j++)
+                Array.Copy(BitConverter.GetBytes(vertices[i][j]), 0, binBuffer, bufferViews[i * 3 + 0].byteOffset + j * sizeof(float), sizeof(float));
+
+            for (int j = 0; j < normals[i].Count; j++)
+                Array.Copy(BitConverter.GetBytes(vertices[i][j]), 0, binBuffer, bufferViews[i * 3 + 1].byteOffset + j * sizeof(float), sizeof(float));
+
+            for (int j = 0; j < faces[i].Count; j++)
+                Array.Copy(BitConverter.GetBytes(faces[i][j]), 0, binBuffer, bufferViews[i * 3 + 2].byteOffset + j * sizeof(short), sizeof(short));
+
+        }
+
+        string jsonString = JsonSerializer.Serialize(jsonData, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = false });
+        byte[] jsonLength = BitConverter.GetBytes((uint)jsonString.Length);
+        byte[] jsonChunk = Encoding.UTF8.GetBytes("JSON" + jsonString);
+
+        byte[] magic = Encoding.UTF8.GetBytes("glTF");
+        byte[] version = BitConverter.GetBytes((uint)2);
+        byte[] length = BitConverter.GetBytes((uint)(binBuffer.Length + 8));
+
+        byte[] binType = Encoding.UTF8.GetBytes("BIN\0");
+
+        using (BinaryWriter writer = new BinaryWriter(File.Open(filePath.Replace(".txt", "new.glb"), FileMode.Create)))
+        {
+            writer.Write(magic);
+            writer.Write(version);
+            writer.Write(length);
+            writer.Write(jsonLength);
+            writer.Write(jsonChunk);
+            writer.Write(BitConverter.GetBytes((uint)binLength));
+            writer.Write(binType);
+            writer.Write(binBuffer);
+        }
     }
 
     static void ParseGLB(string filePath)
@@ -111,7 +178,7 @@ class Program
                 return;
             }
 
-            reader.ReadBytes(8);
+            byte[] asd = reader.ReadBytes(8);
 
             uint jsonLength = reader.ReadUInt32();
             reader.ReadBytes(4);
@@ -119,9 +186,10 @@ class Program
 
             RootObject jsonAttribute = JsonSerializer.Deserialize<RootObject>(jsonStr);
 
-            uint binChunkLength = reader.ReadUInt32() + 4;
+            uint binChunkLength = reader.ReadUInt32();
             if (binChunkLength > 0)
             {
+                reader.ReadUInt32();
                 byte[] binaryData = reader.ReadBytes((int)binChunkLength);
 
                 for (int mesh = 0; mesh < jsonAttribute.scenes[0].nodes.Count; mesh++)
@@ -145,7 +213,7 @@ class Program
                     {
                         int facesPosition = jsonAttribute.meshes[mesh].primitives[0].indices;
                         int bufferPosition = jsonAttribute.accessors[facesPosition].bufferView;
-                        int facesOffset = jsonAttribute.bufferViews[bufferPosition].byteOffset + 4;
+                        int facesOffset = jsonAttribute.bufferViews[bufferPosition].byteOffset;
                         int facesLength = jsonAttribute.bufferViews[bufferPosition].byteLength;
 
                         byte[] facesBuffer = new byte[facesLength];
@@ -160,7 +228,7 @@ class Program
                         }
                     }
 
-
+                    writer.WriteLine();
                     for (int i = 0; i < vertices.Length; i += 3)
                     {
                         writer.WriteLine($"{i / 3}:({vertices[i]};{vertices[i + 1]};{vertices[i + 2]})");
@@ -177,8 +245,6 @@ class Program
                     {
                         writer.WriteLine($"{i / 3}:({faces[i]};{faces[i + 1]};{faces[i + 2]})");
                     }
-                    writer.WriteLine();
-
                 }
             }
             else
@@ -212,7 +278,7 @@ class Program
 
         float[] data = new float[paramsCount * 3];
 
-        int offset = 4;
+        int offset = 0;
 
         for (int i = 0; i < data.Length; i += 3)
         {
@@ -222,7 +288,6 @@ class Program
 
             offset += 12;
         }
-
         return data;
     }
 
@@ -246,4 +311,3 @@ class Program
         }
     }
 }
-

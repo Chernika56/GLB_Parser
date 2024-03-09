@@ -6,7 +6,7 @@
         public int byteLength { get; set; }
         public int byteOffset { get; set; }
         public int target { get; set; }
-        public int byteStride { get; set; }
+        public int? byteStride { get; set; }
 
         public BufferViews(int buffer, int byteLength, int byteOffset, int target, int byteStride)
         {
