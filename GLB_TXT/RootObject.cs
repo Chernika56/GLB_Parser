@@ -60,7 +60,7 @@
         /// <param name="bufferViews">The list of buffer views in the GLB file.</param>
         /// <param name="buffersLength">The length of the buffer in the GLB file.</param>
         public RootObject(List<Scenes> scenes, List<Nodes> nodes, List<Meshes> meshes,
-            List<Accessors> accessors, List<BufferViews> bufferViews, int buffersLength)
+            List<Accessors> accessors, List<BufferViews> bufferViews, uint buffersLength)
         {
             asset = new Asset("2.0");
             scene = 0;
@@ -93,7 +93,7 @@
         /// <param name="bufferViews">The list of buffer views in the GLB file.</param>
         /// <param name="buffersLength">The length of the buffer in the GLB file.</param>
         public RootObject(List<Materials> materials, List<Scenes> scenes, List<Nodes> nodes,
-            List<Meshes> meshes, List<Accessors> accessors, List<BufferViews> bufferViews, int buffersLength)
+            List<Meshes> meshes, List<Accessors> accessors, List<BufferViews> bufferViews, uint buffersLength)
         {
             asset = new Asset("2.0");
             scene = 0;

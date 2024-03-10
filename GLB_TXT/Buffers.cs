@@ -8,13 +8,13 @@
         /// <summary>
         /// Gets or sets the total length of the buffer in bytes.
         /// </summary>
-        public int byteLength { get; set; }
+        public uint byteLength { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Buffers"/> class with the specified total length of the buffer in bytes.
         /// </summary>
         /// <param name="byteLength">The total length of the buffer in bytes.</param>
-        public Buffers(int byteLength)
+        public Buffers(uint byteLength)
         {
             this.byteLength = byteLength;
         }

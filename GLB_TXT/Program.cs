@@ -202,23 +202,33 @@ class Program
         List<BufferViews> bufferViews = new List<BufferViews>();
         List<int> node = new List<int>();
         List<Nodes> nodes = new List<Nodes>();
+        List<double> min = new List<double>();
+        List<double> max = new List<double>();
 
-        int binLength = 0;
+        uint binLength = 0;
 
         for (int i = 0; i < vertices.Count; i++)
         {
-            bufferViews.Add(new BufferViews(0, vertices[i].Count * sizeof(float), binLength, 34962));
-            binLength += vertices[i].Count * sizeof(float);
-            bufferViews.Add(new BufferViews(0, normals[i].Count * sizeof(float), binLength, 34962));
-            binLength += normals[i].Count * sizeof(float);
-            bufferViews.Add(new BufferViews(0, faces[i].Count * sizeof(short), binLength, 34963));
-            binLength += faces[i].Count * sizeof(short);
+            bufferViews.Add(new BufferViews(0, (uint)(vertices[i].Count * sizeof(float)), binLength, 34962));
+            binLength += (uint)(vertices[i].Count * sizeof(float));
+            bufferViews.Add(new BufferViews(0, (uint)(normals[i].Count * sizeof(float)), binLength, 34962));
+            binLength += (uint)(normals[i].Count * sizeof(float));
+            bufferViews.Add(new BufferViews(0, (uint)(faces[i].Count * sizeof(short)), binLength, 34963));
+            binLength += (uint)(faces[i].Count * sizeof(short));
+
+            min.Add(vertices[i].Min());
+            min.Add(vertices[i].Min());
+            min.Add(vertices[i].Min());
+
+            max.Add(vertices[i].Max());
+            max.Add(vertices[i].Max());
+            max.Add(vertices[i].Max());
 
             meshes.Add(new Meshes($"aboba{i}", 0, i * 3 + 0, i * 3 + 1, i * 3 + 2, 0));
             nodes.Add(new Nodes($"aboba{i}", i));
             node.Add(i);
 
-            accessors.Add(new Accessors(i * 3 + 0, 5126, vertices[i].Count / 3, "VEC3"));
+            accessors.Add(new Accessors(i * 3 + 0, 5126, vertices[i].Count / 3, min, max, "VEC3"));
             accessors.Add(new Accessors(i * 3 + 1, 5126, normals[i].Count / 3, "VEC3"));
             accessors.Add(new Accessors(i * 3 + 2, 5123, faces[i].Count, "SCALAR"));
         }
@@ -318,8 +328,8 @@ class Program
                         // Other rendering modes, read face indices from the binary data.
                         int facesPosition = jsonAttribute.meshes[mesh].primitives[0].indices;
                         int bufferPosition = jsonAttribute.accessors[facesPosition].bufferView;
-                        int facesOffset = jsonAttribute.bufferViews[bufferPosition].byteOffset;
-                        int facesLength = jsonAttribute.bufferViews[bufferPosition].byteLength;
+                        uint facesOffset = jsonAttribute.bufferViews[bufferPosition].byteOffset;
+                        uint facesLength = jsonAttribute.bufferViews[bufferPosition].byteLength;
 
                         byte[] facesBuffer = new byte[facesLength];
                         Array.Copy(binaryData, facesOffset, facesBuffer, 0, facesLength);
@@ -373,8 +383,8 @@ class Program
         jsonAttribute.meshes[mesh].primitives[0].attributes.TryGetValue(param, out paramsPosition);
 
         int bufferPosition = jsonAttribute.accessors[paramsPosition].bufferView;
-        int paramsOffset = jsonAttribute.bufferViews[bufferPosition].byteOffset;
-        int paramsLength = jsonAttribute.bufferViews[bufferPosition].byteLength + 4;
+        uint paramsOffset = jsonAttribute.bufferViews[bufferPosition].byteOffset;
+        uint paramsLength = jsonAttribute.bufferViews[bufferPosition].byteLength + 4;
 
         byte[] paramsBuffer = new byte[paramsLength];
         Array.Copy(binaryData, paramsOffset, paramsBuffer, 0, paramsLength);
