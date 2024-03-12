@@ -1,4 +1,4 @@
-﻿namespace GLB_TXT
+﻿namespace GLB_TXT.Object
 {
     /// <summary>
     /// Represents a material in a GLB (Binary GLTF) file, containing information about the material's name,

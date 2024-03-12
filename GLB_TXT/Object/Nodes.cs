@@ -1,4 +1,4 @@
-﻿namespace GLB_TXT
+﻿namespace GLB_TXT.Object
 {
     /// <summary>
     /// Represents a node in a GLB (Binary GLTF) file, containing information about the node's name and associated mesh.

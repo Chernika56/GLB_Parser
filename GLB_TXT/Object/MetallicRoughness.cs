@@ -1,4 +1,4 @@
-﻿namespace GLB_TXT
+﻿namespace GLB_TXT.Object
 {
     /// <summary>
     /// Represents the metallic-roughness material properties in a GLB (Binary GLTF) file.

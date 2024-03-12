@@ -1,4 +1,4 @@
-﻿namespace GLB_TXT
+﻿namespace GLB_TXT.Object
 {
     /// <summary>
     /// Represents bufferView information for accessing a specific portion of a buffer in a GLB (Binary GLTF) file.

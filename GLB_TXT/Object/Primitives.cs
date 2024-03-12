@@ -1,4 +1,4 @@
-﻿namespace GLB_TXT
+﻿namespace GLB_TXT.Object
 {
     /// <summary>
     /// Represents the primitives of a mesh in a GLB (Binary GLTF) file, containing information about

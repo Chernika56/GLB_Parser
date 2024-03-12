@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace GLB_TXT
+namespace GLB_TXT.Object
 {
     /// <summary>
     /// Represents a scene in a GLB (Binary GLTF) file, containing information about the scene's name and associated nodes.

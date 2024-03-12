@@ -1,7 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 using System.Collections.Generic;
 
-namespace GLB_TXT
+namespace GLB_TXT.Object
 {
     /// <summary>
     /// Represents accessor information for accessing bufferView data in a GLB (Binary GLTF) file.

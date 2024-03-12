@@ -1,4 +1,4 @@
-﻿namespace GLB_TXT
+﻿namespace GLB_TXT.Object
 {
     /// <summary>
     /// Represents the root object of a GLB (Binary GLTF) file, containing information about scenes, nodes, meshes, accessors, buffer views, and buffers.
@@ -78,8 +78,8 @@
 
             this.bufferViews = bufferViews;
 
-            this.buffers = new List<Buffers>();
-            this.buffers.Add(new Buffers(buffersLength));
+            buffers = new List<Buffers>();
+            buffers.Add(new Buffers(buffersLength));
         }
 
         /// <summary>
@@ -110,8 +110,8 @@
 
             this.bufferViews = bufferViews;
 
-            this.buffers = new List<Buffers>();
-            this.buffers.Add(new Buffers(buffersLength));
+            buffers = new List<Buffers>();
+            buffers.Add(new Buffers(buffersLength));
         }
 
         /// <summary>
