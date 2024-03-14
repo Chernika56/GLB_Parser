@@ -58,46 +58,6 @@ class Program
                     CreateSTL(filePath);
                 }
             }
-
-            if (tmp == 5)
-            {
-                using (FileStream fs = new FileStream(filePath, FileMode.Open))
-                using (BinaryReader br = new BinaryReader(fs))
-                {
-                    // Чтение заголовка (80 байт)
-                    byte[] header = br.ReadBytes(80);
-                    string headerText = Encoding.ASCII.GetString(header).Trim();
-                    Console.WriteLine("STL Header: " + headerText);
-
-                    // Чтение количества треугольников (4 байта)
-                    uint triangleCount = br.ReadUInt32();
-                    Console.WriteLine("Number of triangles: " + triangleCount);
-
-                    // Чтение данных о каждом треугольнике
-                    for (int i = 0; i < triangleCount; i++)
-                    {
-                        Console.WriteLine("\nTriangle " + (i + 1));
-
-                        // Чтение нормали треугольника (12 байт)
-                        float nx = br.ReadSingle();
-                        float ny = br.ReadSingle();
-                        float nz = br.ReadSingle();
-                        Console.WriteLine("Normal: ({0}, {1}, {2})", nx, ny, nz);
-
-                        // Чтение вершин треугольника (36 байт)
-                        for (int j = 0; j < 3; j++)
-                        {
-                            float x = br.ReadSingle();
-                            float y = br.ReadSingle();
-                            float z = br.ReadSingle();
-                            Console.WriteLine("Vertex {0}: ({1}, {2}, {3})", j + 1, x, y, z);
-                        }
-
-                        // Пропускаем атрибут треугольника (2 байта)
-                        br.BaseStream.Seek(2, SeekOrigin.Current);
-                    }
-                }
-            }
         }
     }
 
