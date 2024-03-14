@@ -1,4 +1,5 @@
-﻿using GLB_TXT.Object;
+﻿using GLB_TXT;
+using GLB_TXT.Object;
 using System.Numerics;
 using System.Text;
 using System.Text.Json;
@@ -57,6 +58,46 @@ class Program
                     CreateSTL(filePath);
                 }
             }
+
+            if (tmp == 5)
+            {
+                using (FileStream fs = new FileStream(filePath, FileMode.Open))
+                using (BinaryReader br = new BinaryReader(fs))
+                {
+                    // Чтение заголовка (80 байт)
+                    byte[] header = br.ReadBytes(80);
+                    string headerText = Encoding.ASCII.GetString(header).Trim();
+                    Console.WriteLine("STL Header: " + headerText);
+
+                    // Чтение количества треугольников (4 байта)
+                    uint triangleCount = br.ReadUInt32();
+                    Console.WriteLine("Number of triangles: " + triangleCount);
+
+                    // Чтение данных о каждом треугольнике
+                    for (int i = 0; i < triangleCount; i++)
+                    {
+                        Console.WriteLine("\nTriangle " + (i + 1));
+
+                        // Чтение нормали треугольника (12 байт)
+                        float nx = br.ReadSingle();
+                        float ny = br.ReadSingle();
+                        float nz = br.ReadSingle();
+                        Console.WriteLine("Normal: ({0}, {1}, {2})", nx, ny, nz);
+
+                        // Чтение вершин треугольника (36 байт)
+                        for (int j = 0; j < 3; j++)
+                        {
+                            float x = br.ReadSingle();
+                            float y = br.ReadSingle();
+                            float z = br.ReadSingle();
+                            Console.WriteLine("Vertex {0}: ({1}, {2}, {3})", j + 1, x, y, z);
+                        }
+
+                        // Пропускаем атрибут треугольника (2 байта)
+                        br.BaseStream.Seek(2, SeekOrigin.Current);
+                    }
+                }
+            }
         }
     }
 
@@ -106,7 +147,7 @@ class Program
             throw new Exception("Файл пуст");
         }
 
-        ParseTxt(lines, ref vertices, ref normals, ref faces);
+        ParseTxtToGLB(lines, ref vertices, ref normals, ref faces);
 
         RootObject jsonData = CreateRootObject(ref vertices, ref normals, ref faces);
 
@@ -157,7 +198,7 @@ class Program
     /// <param name="vertices">List to store vertex data.</param>
     /// <param name="normals">List to store normal data.</param>
     /// <param name="faces">List to store face data.</param>
-    private static void ParseTxt(string[] lines, ref List<List<Vector3>> vertices, ref List<List<Vector3>> normals, ref List<List<int>> faces)
+    private static void ParseTxtToGLB(string[] lines, ref List<List<Vector3>> vertices, ref List<List<Vector3>> normals, ref List<List<int>> faces)
     {
         int tmp = 0;
 
@@ -471,6 +512,7 @@ class Program
         List<Vector3> vertices = new List<Vector3>();
         List<Vector3> normals = new List<Vector3>();
         List<ushort> faces = new List<ushort>();
+        Vector3HashSet uniqueVerticesSet = new Vector3HashSet();
 
         using (FileStream fs = new FileStream(filePath, FileMode.Open))
         using (BinaryReader br = new BinaryReader(fs))
@@ -491,8 +533,6 @@ class Program
 
                 // Add the normal vector for each vertex of the triangle
                 normals.Add(new Vector3(nx, ny, nz));
-                normals.Add(new Vector3(nx, ny, nz));
-                normals.Add(new Vector3(nx, ny, nz));
 
                 // Loop through each vertex of the triangle
                 for (int j = 0; j < 3; j++)
@@ -502,17 +542,26 @@ class Program
                     float y = br.ReadSingle();
                     float z = br.ReadSingle();
 
-                    // Add the vertex to the list
-                    vertices.Add(new Vector3(x, y, z));
+                    Vector3 point = new Vector3(x, y, z);
 
-                    // Add the face index (based on the current triangle and vertex)
-                    faces.Add((ushort)(i * 3 + j));
+                    //Adding only unique points
+                    if (!uniqueVerticesSet.Add(point))
+                    {
+                        int index = uniqueVerticesSet.IndexOf(point);
+                        faces.Add((ushort)(index));
+                    }
+                    else
+                    {
+                        faces.Add((ushort)(uniqueVerticesSet.Count - 1));
+                    }
                 }
 
                 // Skip the attribute byte count (2 bytes) for each triangle
                 br.BaseStream.Seek(2, SeekOrigin.Current);
             }
         }
+
+        vertices = uniqueVerticesSet.ToList();
 
         using (StreamWriter writer = new StreamWriter(filePath.Replace("stl", "txt")))
         {
@@ -526,72 +575,93 @@ class Program
     /// <param name="filePath">The path to the input text file.</param>
     private static void CreateSTL(string filePath)
     {
-        // Read the content of the text file
         string[] lines = ReadTxt(filePath);
 
-        // Lists to store vertices, normals, and faces
-        List<List<Vector3>> vertices = new List<List<Vector3>>();
-        List<List<Vector3>> normals = new List<List<Vector3>>();
-        List<List<int>> faces = new List<List<int>>();
+        List<Vector3> vertices = new List<Vector3>();
+        List<Vector3> normals = new List<Vector3>();
+        List<int> faces = new List<int>();
 
-        // Initialize lists for the first object
-        vertices.Add(new List<Vector3>());
-        normals.Add(new List<Vector3>());
-        faces.Add(new List<int>());
-
-        // Check if the file is empty
         if (lines.Length == 0)
         {
             throw new Exception("The file is empty");
         }
 
-        // Parse the text file to extract vertices, normals, and faces
-        ParseTxt(lines, ref vertices, ref normals, ref faces);
+        ParseTxtToSTL(lines, ref vertices, ref normals, ref faces);
 
-        // Create a header for the binary STL file
         byte[] header = new byte[80];
         byte[] text = Encoding.UTF8.GetBytes("binary stl file                                                                ");
         Array.Copy(text, 0, header, 0, text.Length);
 
-        // Calculate the total number of triangles in all objects
-        int trianglesCount = GetTotalElements(faces) / 3;
+        int trianglesCount = faces.Count / 3;
 
-        // Convert the number of triangles to bytes
         byte[] numOfTriangles = BitConverter.GetBytes((uint)trianglesCount);
 
-        // Write the header and the number of triangles to the binary STL file
         using (BinaryWriter writer = new BinaryWriter(File.Open(filePath.Replace(".txt", "new.stl"), FileMode.Create)))
         {
             writer.Write(header);
             writer.Write(numOfTriangles);
 
-            // Loop through each object and its faces
-            for (int i = 0; i < faces.Count; i++)
+            for (int i = 0; i < faces.Count;)
             {
-                // Loop through each face's vertices
-                for (int j = 0; j < faces[i].Count;)
-                {
-                    // Write the normal vector and vertices to the binary STL file
-                    writer.Write(Vector3ToByteArray(normals[i][faces[i][j]]));
-                    writer.Write(Vector3ToByteArray(vertices[i][faces[i][j++]]));
-                    writer.Write(Vector3ToByteArray(vertices[i][faces[i][j++]]));
-                    writer.Write(Vector3ToByteArray(vertices[i][faces[i][j++]]));
+                // Write the normal vector and vertices to the binary STL file
+                writer.Write(Vector3ToByteArray(normals[i / 3]));
+                writer.Write(Vector3ToByteArray(vertices[faces[i++]]));
+                writer.Write(Vector3ToByteArray(vertices[faces[i++]]));
+                writer.Write(Vector3ToByteArray(vertices[faces[i++]]));
 
-                    // Write two bytes of attribute data (currently set to 0)
-                    writer.Write((byte)0);
-                    writer.Write((byte)0);
-                }
+                // Write two bytes of attribute data (currently set to 0)
+                writer.Write((byte)0);
+                writer.Write((byte)0);
             }
         }
     }
 
     /// <summary>
-    /// Calculates the total number of elements in a list of lists.
+    /// Parses the content of a text file in STL format and extracts vertices, normals, and faces.
     /// </summary>
-    /// <param name="listOfLists">The list of lists containing elements.</param>
-    /// <returns>The total number of elements in all lists.</returns>
-    private static int GetTotalElements(List<List<int>> listOfLists)
+    /// <param name="lines">Array of strings representing the lines of the text file.</param>
+    /// <param name="vertices">List of Vector3 representing vertices.</param>
+    /// <param name="normals">List of Vector3 representing normals.</param>
+    /// <param name="faces">List of integers representing faces.</param>
+    private static void ParseTxtToSTL(string[] lines, ref List<Vector3> vertices, ref List<Vector3> normals, ref List<int> faces)
     {
-        return listOfLists.SelectMany(list => list).Count();
+        // Counter to keep track of the current data block (vertices, normals, or faces)
+        int tmp = 0;
+
+        // Iterate through each line in the text file
+        foreach (string line in lines)
+        {
+            // Check if the line is empty or whitespace
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                // Increment the counter to move to the next data block
+                tmp++;
+            }
+            else
+            {
+                // Remove parentheses and split values by semicolon
+                string cleanedLine = line.Remove(0, 1 + line.IndexOf('(')).Replace(")", "");
+                string[] values = cleanedLine.Split(';');
+
+                // Determine the type of data block based on the counter
+                switch (tmp % 3)
+                {
+                    case 0:
+                        // Parse and add vertices
+                        vertices.Add(new Vector3(float.Parse(values[0]), float.Parse(values[1]), float.Parse(values[2])));
+                        break;
+                    case 1:
+                        // Parse and add normals
+                        normals.Add(new Vector3(float.Parse(values[0]), float.Parse(values[1]), float.Parse(values[2])));
+                        break;
+                    case 2:
+                        // Parse and add faces
+                        faces.Add(ushort.Parse(values[0]));
+                        faces.Add(ushort.Parse(values[1]));
+                        faces.Add(ushort.Parse(values[2]));
+                        break;
+                }
+            }
+        }
     }
 }
