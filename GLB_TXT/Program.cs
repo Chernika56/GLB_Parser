@@ -95,11 +95,11 @@ class Program
 
         List<List<Vector3>> vertices = new List<List<Vector3>>();
         List<List<Vector3>> normals = new List<List<Vector3>>();
-        List<List<short>> faces = new List<List<short>>();
+        List<List<int>> faces = new List<List<int>>();
 
         vertices.Add(new List<Vector3>());
         normals.Add(new List<Vector3>());
-        faces.Add(new List<short>());
+        faces.Add(new List<int>());
 
         if (lines.Length == 0)
         {
@@ -157,7 +157,7 @@ class Program
     /// <param name="vertices">List to store vertex data.</param>
     /// <param name="normals">List to store normal data.</param>
     /// <param name="faces">List to store face data.</param>
-    private static void ParseTxt(string[] lines, ref List<List<Vector3>> vertices, ref List<List<Vector3>> normals, ref List<List<short>> faces)
+    private static void ParseTxt(string[] lines, ref List<List<Vector3>> vertices, ref List<List<Vector3>> normals, ref List<List<int>> faces)
     {
         int tmp = 0;
 
@@ -171,7 +171,7 @@ class Program
                 {
                     vertices.Add(new List<Vector3>());
                     normals.Add(new List<Vector3>());
-                    faces.Add(new List<short>());
+                    faces.Add(new List<int>());
                 }
             }
             else
@@ -188,9 +188,9 @@ class Program
                         normals[tmp / 3].Add(new Vector3(float.Parse(values[0]), float.Parse(values[1]), float.Parse(values[2])));
                         break;
                     case 2:
-                        faces[tmp / 3].Add(short.Parse(values[0]));
-                        faces[tmp / 3].Add(short.Parse(values[1]));
-                        faces[tmp / 3].Add(short.Parse(values[2]));
+                        faces[tmp / 3].Add(ushort.Parse(values[0]));
+                        faces[tmp / 3].Add(ushort.Parse(values[1]));
+                        faces[tmp / 3].Add(ushort.Parse(values[2]));
                         break;
                 }
 
@@ -205,7 +205,7 @@ class Program
     /// <param name="normals">List of normal data.</param>
     /// <param name="faces">List of face data.</param>
     /// <returns>The root JSON object representing the GLB file structure.</returns>
-    private static RootObject CreateRootObject(ref List<List<Vector3>> vertices, ref List<List<Vector3>> normals, ref List<List<short>> faces)
+    private static RootObject CreateRootObject(ref List<List<Vector3>> vertices, ref List<List<Vector3>> normals, ref List<List<int>> faces)
     {
         List<Meshes> meshes = new List<Meshes>();
         List<Accessors> accessors = new List<Accessors>();
@@ -257,7 +257,7 @@ class Program
     /// <param name="normals">List of normal data.</param>
     /// <param name="faces">List of face data.</param>
     /// <returns>The binary buffer for the GLB file.</returns>
-    private static byte[] CreateBinBuffer(RootObject jsonData, ref List<List<Vector3>> vertices, ref List<List<Vector3>> normals, ref List<List<short>> faces)
+    private static byte[] CreateBinBuffer(RootObject jsonData, ref List<List<Vector3>> vertices, ref List<List<Vector3>> normals, ref List<List<int>> faces)
     {
         byte[] binBuffer = new byte[jsonData.buffers[0].byteLength];
 
@@ -345,9 +345,9 @@ class Program
                     if (jsonAttribute.meshes[mesh].primitives[0].mode == 4)
                     {
                         // Mode where every 3 consecutive points form a polygon
-                        for (ushort i = 0; i < vertices.Count * 3; i++)
+                        for (ushort i = 0; i < vertices.Count / 3; i++)
                         {
-                            faces[i] = i;
+                            faces.Add(i);
                         }
                     }
                     else
@@ -368,43 +368,43 @@ class Program
                         }
                     }
 
-                    CreateTxt(filePath, vertices, normals, faces);
+                    using (StreamWriter writer = new StreamWriter(filePath.Replace("glb", "txt")))
+                    {
+                        CreateTxt(writer, vertices, normals, faces);
+                    }
                 }
             }
         }
     }
 
     /// <summary>
-    /// Creates a text file (.txt) from the STL file data, including vertices, normals, and faces.
+    /// Creates a text file (.txt) from the STL/GLB file data, including vertices, normals, and faces.
     /// </summary>
-    /// <param name="filePath">The path to the STL file.</param>
+    /// <param name="writer">The StreamWriter to write data to the text file.</param>
     /// <param name="vertices">List of Vector3 representing vertices.</param>
     /// <param name="normals">List of Vector3 representing normals.</param>
     /// <param name="faces">List of ushort representing faces.</param>
-    private static void CreateTxt(string filePath, List<Vector3> vertices, List<Vector3> normals, List<ushort> faces)
+    private static void CreateTxt(StreamWriter writer, List<Vector3> vertices, List<Vector3> normals, List<ushort> faces)
     {
-        using (StreamWriter writer = new StreamWriter(filePath.Replace("stl", "txt")))
+        // Write vertices to the text file
+        writer.WriteLine();
+        for (int i = 0; i < vertices.Count; i++)
         {
-            // Write vertices to the text file
-            writer.WriteLine();
-            for (int i = 0; i < vertices.Count; i++)
-            {
-                writer.WriteLine($"{i}:({vertices[i].X};{vertices[i].Y};{vertices[i].Z})");
-            }
+            writer.WriteLine($"{i}:({vertices[i].X};{vertices[i].Y};{vertices[i].Z})");
+        }
 
-            // Write normals to the text file
-            writer.WriteLine();
-            for (int i = 0; i < normals.Count; i++)
-            {
-                writer.WriteLine($"{i}:({normals[i].X};{normals[i].Y};{normals[i].Z})");
-            }
+        // Write normals to the text file
+        writer.WriteLine();
+        for (int i = 0; i < normals.Count; i++)
+        {
+            writer.WriteLine($"{i}:({normals[i].X};{normals[i].Y};{normals[i].Z})");
+        }
 
-            // Write faces to the text file
-            writer.WriteLine();
-            for (int i = 0; i < faces.Count; i += 3)
-            {
-                writer.WriteLine($"{i}:({faces[i]};{faces[i + 1]};{faces[i + 2]})");
-            }
+        // Write faces to the text file
+        writer.WriteLine();
+        for (int i = 0; i < faces.Count; i += 3)
+        {
+            writer.WriteLine($"{i / 3}:({faces[i]};{faces[i + 1]};{faces[i + 2]})");
         }
     }
 
@@ -514,8 +514,10 @@ class Program
             }
         }
 
-        // Create a corresponding text file with the extracted data
-        CreateTxt(filePath, vertices, normals, faces);
+        using (StreamWriter writer = new StreamWriter(filePath.Replace("stl", "txt")))
+        {
+            CreateTxt(writer, vertices, normals, faces);
+        }
     }
 
     /// <summary>
@@ -530,12 +532,12 @@ class Program
         // Lists to store vertices, normals, and faces
         List<List<Vector3>> vertices = new List<List<Vector3>>();
         List<List<Vector3>> normals = new List<List<Vector3>>();
-        List<List<short>> faces = new List<List<short>>();
+        List<List<int>> faces = new List<List<int>>();
 
         // Initialize lists for the first object
         vertices.Add(new List<Vector3>());
         normals.Add(new List<Vector3>());
-        faces.Add(new List<short>());
+        faces.Add(new List<int>());
 
         // Check if the file is empty
         if (lines.Length == 0)
@@ -588,7 +590,7 @@ class Program
     /// </summary>
     /// <param name="listOfLists">The list of lists containing elements.</param>
     /// <returns>The total number of elements in all lists.</returns>
-    private static int GetTotalElements(List<List<short>> listOfLists)
+    private static int GetTotalElements(List<List<int>> listOfLists)
     {
         return listOfLists.SelectMany(list => list).Count();
     }
